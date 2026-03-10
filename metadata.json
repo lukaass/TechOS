@@ -1,0 +1,7 @@
+{
+  "name": "TechOS",
+  "description": "Sistema avançado de gerenciamento de assistência técnica para informática e eletrônicos.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}

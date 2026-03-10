@@ -1,0 +1,22 @@
+{
+  "short_name": "TechOS",
+  "name": "TechOS - Gestão de Assistência Técnica",
+  "icons": [
+    {
+      "src": "https://picsum.photos/seed/techos/192/192",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "https://picsum.photos/seed/techos/512/512",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#1E1E1E",
+  "display": "standalone",
+  "scope": "/",
+  "theme_color": "#0A84FF",
+  "description": "Sistema avançado para técnicos de informática e eletrônicos."
+}
