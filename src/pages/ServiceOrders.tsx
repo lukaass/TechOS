@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useAuthStore } from '../store/authStore';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '../db';
 import { Link } from 'react-router-dom';
 import { 
   Search, 
@@ -11,9 +11,7 @@ import {
   AlertCircle, 
   PauseCircle,
   ChevronRight,
-  MoreVertical
 } from 'lucide-react';
-import { motion } from 'motion/react';
 
 const statusMap: Record<string, { label: string; color: string; bg: string; icon: any }> = {
   pending_diagnosis: { label: 'Aguardando Diagnóstico', color: 'text-blue-400', bg: 'bg-blue-400/10', icon: Search },
@@ -24,18 +22,29 @@ const statusMap: Record<string, { label: string; color: string; bg: string; icon
 };
 
 export default function ServiceOrders() {
-  const token = useAuthStore((state) => state.token);
   const [searchTerm, setSearchTerm] = useState('');
 
-  const { data: osList, isLoading } = useQuery({
-    queryKey: ['os-list'],
-    queryFn: async () => {
-      const res = await fetch('/api/os', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      return res.json();
-    },
-  });
+  const osList = useLiveQuery(async () => {
+    const osData = await db.service_orders.orderBy('created_at').reverse().toArray();
+    
+    // Manual Joins
+    const enrichedOS = await Promise.all(osData.map(async (os) => {
+      const client = await db.clients.get(os.client_id);
+      const equipment = await db.equipment.get(os.equipment_id);
+      const technician = os.technician_id ? await db.users.get(os.technician_id) : null;
+      
+      return {
+        ...os,
+        client_name: client?.name || 'Cliente não encontrado',
+        equipment_model: equipment?.model || 'Equipamento não encontrado',
+        technician_name: technician?.name || 'Não atribuído'
+      };
+    }));
+
+    return enrichedOS;
+  }, []);
+
+  const isLoading = osList === undefined;
 
   const filteredOS = osList?.filter((os: any) => 
     os.client_name.toLowerCase().includes(searchTerm.toLowerCase()) ||

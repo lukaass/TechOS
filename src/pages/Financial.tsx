@@ -1,27 +1,30 @@
-import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { useAuthStore } from '../store/authStore';
+import React from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '../db';
 import { 
   TrendingUp, 
   TrendingDown, 
   DollarSign, 
-  Calendar, 
-  ArrowUpRight, 
-  ArrowDownRight,
   Plus,
-  Filter
+  Filter,
+  ArrowUpRight,
+  ArrowDownRight
 } from 'lucide-react';
 
 export default function Financial() {
-  const token = useAuthStore((state) => state.token);
+  const transactions = useLiveQuery(() => db.financial.orderBy('date').reverse().toArray(), []);
+  const isLoading = transactions === undefined;
 
-  // In a real app, we would fetch this from /api/financial
-  const transactions = [
-    { id: 1, type: 'income', category: 'Serviço', description: 'OS #101 - Reparo Placa Mãe', amount: 450.00, date: '2024-03-10' },
-    { id: 2, type: 'expense', category: 'Peças', description: 'Compra de SSDs 240GB', amount: 800.00, date: '2024-03-09' },
-    { id: 3, type: 'income', category: 'Venda', description: 'SSD 480GB Kingston', amount: 320.00, date: '2024-03-08' },
-    { id: 4, type: 'expense', category: 'Infra', description: 'Aluguel Sala Comercial', amount: 1200.00, date: '2024-03-05' },
-  ];
+  const stats = useLiveQuery(async () => {
+    const monthStr = new Date().toISOString().slice(0, 7);
+    const monthRecords = await db.financial.filter(f => f.date.startsWith(monthStr)).toArray();
+    
+    const income = monthRecords.filter(r => r.type === 'income').reduce((acc, curr) => acc + curr.amount, 0);
+    const expense = monthRecords.filter(r => r.type === 'expense').reduce((acc, curr) => acc + curr.amount, 0);
+    const balance = income - expense;
+
+    return { income, expense, balance };
+  }, []);
 
   return (
     <div className="space-y-8">
@@ -48,7 +51,7 @@ export default function Financial() {
             <TrendingUp size={24} />
           </div>
           <p className="text-white/40 text-sm font-medium">Receitas (Mês)</p>
-          <p className="text-3xl font-bold mt-1 text-green-400">R$ 7.420,00</p>
+          <p className="text-3xl font-bold mt-1 text-green-400">R$ {stats?.income?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
           <div className="flex items-center gap-1 mt-2 text-green-400/60 text-xs">
             <ArrowUpRight size={14} />
             <span>+12% em relação ao mês anterior</span>
@@ -60,7 +63,7 @@ export default function Financial() {
             <TrendingDown size={24} />
           </div>
           <p className="text-white/40 text-sm font-medium">Despesas (Mês)</p>
-          <p className="text-3xl font-bold mt-1 text-red-400">R$ 2.150,00</p>
+          <p className="text-3xl font-bold mt-1 text-red-400">R$ {stats?.expense?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
           <div className="flex items-center gap-1 mt-2 text-red-400/60 text-xs">
             <ArrowDownRight size={14} />
             <span>-5% em relação ao mês anterior</span>
@@ -72,7 +75,7 @@ export default function Financial() {
             <DollarSign size={24} />
           </div>
           <p className="text-white/40 text-sm font-medium">Saldo Líquido</p>
-          <p className="text-3xl font-bold mt-1">R$ 5.270,00</p>
+          <p className="text-3xl font-bold mt-1">R$ {stats?.balance?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
           <div className="flex items-center gap-1 mt-2 text-white/20 text-xs">
             <span>Atualizado agora</span>
           </div>
@@ -95,7 +98,7 @@ export default function Financial() {
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
-              {transactions.map((t) => (
+              {transactions?.map((t) => (
                 <tr key={t.id} className="hover:bg-white/2 transition-colors">
                   <td className="px-6 py-4 text-sm text-white/60">{new Date(t.date).toLocaleDateString()}</td>
                   <td className="px-6 py-4 font-medium">{t.description}</td>

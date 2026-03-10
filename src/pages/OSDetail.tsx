@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '../db';
 import { useAuthStore } from '../store/authStore';
 import { 
   ArrowLeft, 
@@ -11,15 +12,11 @@ import {
   Play,
   FileText,
   MessageSquare,
-  Package,
   Wrench,
-  Camera,
-  QrCode,
   Share2,
   Printer,
   Save
 } from 'lucide-react';
-import { motion } from 'motion/react';
 import SignaturePad from 'signature_pad';
 
 const statusMap: Record<string, { label: string; color: string; bg: string; icon: any }> = {
@@ -33,46 +30,55 @@ const statusMap: Record<string, { label: string; color: string; bg: string; icon
 export default function OSDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const token = useAuthStore((state) => state.token);
-  const queryClient = useQueryClient();
+  const user = useAuthStore((state) => state.user);
   const [isSignatureModalOpen, setIsSignatureModalOpen] = useState(false);
   const signatureRef = useRef<HTMLCanvasElement>(null);
   const signaturePadRef = useRef<SignaturePad | null>(null);
 
-  const { data: os, isLoading } = useQuery({
-    queryKey: ['os', id],
-    queryFn: async () => {
-      const res = await fetch(`/api/os/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      return res.json();
-    },
-  });
+  const os = useLiveQuery(async () => {
+    const osId = parseInt(id!);
+    const data = await db.service_orders.get(osId);
+    if (!data) return null;
 
-  const updateStatus = useMutation({
-    mutationFn: async ({ status, description }: { status: string; description?: string }) => {
-      const res = await fetch(`/api/os/${id}/status`, {
-        method: 'PATCH',
-        headers: { 
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}` 
-        },
-        body: JSON.stringify({ status, description }),
-      });
-      return res.json();
-    },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['os', id] }),
-  });
+    const client = await db.clients.get(data.client_id);
+    const equipment = await db.equipment.get(data.equipment_id);
+    const logs = await db.os_logs.where('os_id').equals(osId).toArray();
+    const parts = await db.os_parts.where('os_id').equals(osId).toArray();
+    const services = await db.os_services.where('os_id').equals(osId).toArray();
 
-  const handlePrint = () => {
-    window.open(`/api/os/${id}/pdf?token=${token}`, '_blank');
+    return {
+      ...data,
+      client_name: client?.name,
+      client_phone: client?.phone,
+      client_whatsapp: client?.whatsapp,
+      eq_brand: equipment?.brand,
+      eq_model: equipment?.model,
+      eq_serial: equipment?.serial_number,
+      logs,
+      parts,
+      services
+    };
+  }, [id]);
+
+  const handleUpdateStatus = async (status: string, description: string) => {
+    const osId = parseInt(id!);
+    await db.service_orders.update(osId, { status });
+    await db.os_logs.add({
+      os_id: osId,
+      technician_id: user?.id || 0,
+      description,
+      created_at: new Date().toISOString()
+    });
   };
 
-  const handleSignatureSave = () => {
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const handleSignatureSave = async () => {
     if (signaturePadRef.current?.isEmpty()) return;
     const dataUrl = signaturePadRef.current?.toDataURL();
-    // In a real app, we would send this to the server
-    console.log('Signature saved:', dataUrl);
+    await db.service_orders.update(parseInt(id!), { signature: dataUrl });
     setIsSignatureModalOpen(false);
   };
 
@@ -87,7 +93,7 @@ export default function OSDetail() {
     window.open(`https://wa.me/${os.client_whatsapp}?text=${encodeURIComponent(message)}`, '_blank');
   };
 
-  if (isLoading) return <div className="flex items-center justify-center h-64">Carregando...</div>;
+  if (!os) return <div className="flex items-center justify-center h-64">Carregando...</div>;
 
   const status = statusMap[os.status] || statusMap.pending_diagnosis;
 
@@ -197,14 +203,14 @@ export default function OSDetail() {
             <h3 className="text-base sm:text-lg font-bold mb-2 sm:mb-4">Controle de Tempo</h3>
             <div className="grid grid-cols-2 gap-3 sm:gap-4">
               <button 
-                onClick={() => updateStatus.mutate({ status: 'in_progress', description: 'Serviço iniciado' })}
+                onClick={() => handleUpdateStatus('in_progress', 'Serviço iniciado')}
                 className="flex flex-col items-center justify-center p-3 sm:p-4 bg-green-400/10 text-green-400 rounded-xl sm:rounded-2xl hover:bg-green-400/20 transition-all gap-2"
               >
                 <Play size={20} className="sm:w-6 sm:h-6" />
                 <span className="text-[10px] font-bold uppercase">Iniciar</span>
               </button>
               <button 
-                onClick={() => updateStatus.mutate({ status: 'paused', description: 'Serviço pausado' })}
+                onClick={() => handleUpdateStatus('paused', 'Serviço pausado')}
                 className="flex flex-col items-center justify-center p-3 sm:p-4 bg-white/5 text-white/40 rounded-xl sm:rounded-2xl hover:bg-white/10 transition-all gap-2"
               >
                 <PauseCircle size={20} className="sm:w-6 sm:h-6" />
@@ -212,7 +218,7 @@ export default function OSDetail() {
               </button>
             </div>
             <button 
-              onClick={() => updateStatus.mutate({ status: 'finished', description: 'Serviço finalizado' })}
+              onClick={() => handleUpdateStatus('finished', 'Serviço finalizado')}
               className="w-full py-3 sm:py-4 bg-[#0A84FF] text-white rounded-xl sm:rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-[#0070E0] transition-all text-sm sm:text-base"
             >
               <CheckCircle2 size={20} />

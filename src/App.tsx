@@ -1,4 +1,5 @@
 import React from 'react';
+
 import { Routes, Route, Navigate, Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from './store/authStore';
 import { 
@@ -19,8 +20,7 @@ import {
   CheckCircle2,
   AlertCircle
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
-import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
+import { motion, AnimatePresence } from 'framer-motion';
 
 // --- Pages ---
 import Login from './pages/Login';
@@ -32,8 +32,6 @@ import KnowledgeBase from './pages/KnowledgeBase';
 import OSDetail from './pages/OSDetail';
 import Financial from './pages/Financial';
 import Schedule from './pages/Schedule';
-
-const queryClient = new QueryClient();
 
 function Sidebar({ isOpen, setIsOpen }: { isOpen: boolean; setIsOpen: (v: boolean) => void }) {
   const logout = useAuthStore((state) => state.logout);
@@ -115,7 +113,7 @@ function Layout({ children }: { children: React.ReactNode }) {
       <Sidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
       
       <main className="flex-1 lg:ml-[280px]">
-        <header className="h-16 border-bottom border-white/5 flex items-center justify-between px-4 sm:px-6 sticky top-0 bg-[#141414]/80 backdrop-blur-md z-30">
+        <header className="h-16 border-b border-white/5 flex items-center justify-between px-4 sm:px-6 sticky top-0 bg-[#141414]/80 backdrop-blur-md z-30">
           <button onClick={() => setIsSidebarOpen(true)} className="lg:hidden text-white/60">
             <Menu size={24} />
           </button>
@@ -143,32 +141,30 @@ export default function App() {
   const token = useAuthStore((state) => state.token);
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <Routes>
-        <Route path="/login" element={token ? <Navigate to="/" /> : <Login />} />
-        <Route
-          path="/*"
-          element={
-            token ? (
-              <Layout>
-                <Routes>
-                  <Route path="/" element={<Dashboard />} />
-                  <Route path="/clients" element={<Clients />} />
-                  <Route path="/os" element={<ServiceOrders />} />
-                  <Route path="/os/:id" element={<OSDetail />} />
-                  <Route path="/inventory" element={<Inventory />} />
-                  <Route path="/knowledge" element={<KnowledgeBase />} />
-                  <Route path="/financial" element={<Financial />} />
-                  <Route path="/schedule" element={<Schedule />} />
-                  <Route path="*" element={<Navigate to="/" />} />
-                </Routes>
-              </Layout>
-            ) : (
-              <Navigate to="/login" />
-            )
-          }
-        />
-      </Routes>
-    </QueryClientProvider>
+    <Routes>
+      <Route path="/login" element={token ? <Navigate to="/" /> : <Login />} />
+      <Route
+        path="/*"
+        element={
+          token ? (
+            <Layout>
+              <Routes>
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/clients" element={<Clients />} />
+                <Route path="/os" element={<ServiceOrders />} />
+                <Route path="/os/:id" element={<OSDetail />} />
+                <Route path="/inventory" element={<Inventory />} />
+                <Route path="/knowledge" element={<KnowledgeBase />} />
+                <Route path="/financial" element={<Financial />} />
+                <Route path="/schedule" element={<Schedule />} />
+                <Route path="*" element={<Navigate to="/" />} />
+              </Routes>
+            </Layout>
+          ) : (
+            <Navigate to="/login" />
+          )
+        }
+      />
+    </Routes>
   );
 }

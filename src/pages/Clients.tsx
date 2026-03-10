@@ -1,12 +1,10 @@
 import React, { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useAuthStore } from '../store/authStore';
-import { Search, Plus, UserPlus, Phone, Mail, MapPin, History, ChevronRight } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '../db';
+import { Search, UserPlus, Phone, Mail, MapPin, History, ChevronRight } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function Clients() {
-  const token = useAuthStore((state) => state.token);
-  const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newClient, setNewClient] = useState({
@@ -22,37 +20,25 @@ export default function Clients() {
     notes: ''
   });
 
-  const { data: clients, isLoading } = useQuery({
-    queryKey: ['clients'],
-    queryFn: async () => {
-      const res = await fetch('/api/clients', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      return res.json();
-    },
-  });
+  const clients = useLiveQuery(() => db.clients.orderBy('name').toArray(), []);
+  const isLoading = clients === undefined;
 
-  const createClient = useMutation({
-    mutationFn: async (client: typeof newClient) => {
-      const res = await fetch('/api/clients', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}` 
-        },
-        body: JSON.stringify(client),
+  const handleCreateClient = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await db.clients.add({
+        ...newClient,
+        created_at: new Date().toISOString()
       });
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['clients'] });
       setIsModalOpen(false);
       setNewClient({
         name: '', cpf_cnpj: '', phone: '', whatsapp: '', email: '',
         address: '', city: '', state: '', zip: '', notes: ''
       });
-    },
-  });
+    } catch (err) {
+      console.error('Erro ao criar cliente:', err);
+    }
+  };
 
   const filteredClients = clients?.filter((c: any) => 
     c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -152,7 +138,7 @@ export default function Clients() {
                 </button>
               </div>
 
-              <form onSubmit={(e) => { e.preventDefault(); createClient.mutate(newClient); }} className="space-y-4 sm:space-y-6">
+              <form onSubmit={handleCreateClient} className="space-y-4 sm:space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                   <div className="space-y-1.5 sm:space-y-2">
                     <label className="text-xs sm:text-sm font-medium text-white/40">Nome Completo</label>
@@ -221,10 +207,9 @@ export default function Clients() {
                   </button>
                   <button
                     type="submit"
-                    disabled={createClient.isPending}
-                    className="flex-1 py-3 sm:py-4 bg-[#0A84FF] hover:bg-[#0070E0] rounded-xl font-bold transition-all disabled:opacity-50 text-sm sm:text-base"
+                    className="flex-1 py-3 sm:py-4 bg-[#0A84FF] hover:bg-[#0070E0] rounded-xl font-bold transition-all text-sm sm:text-base"
                   >
-                    {createClient.isPending ? 'Salvando...' : 'Salvar Cliente'}
+                    Salvar Cliente
                   </button>
                 </div>
               </form>

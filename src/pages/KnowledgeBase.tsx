@@ -1,21 +1,13 @@
 import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { useAuthStore } from '../store/authStore';
-import { Search, Plus, BookOpen, ChevronRight, Hash, Tag } from 'lucide-react';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '../db';
+import { Search, Plus, BookOpen, ChevronRight } from 'lucide-react';
 
 export default function KnowledgeBase() {
-  const token = useAuthStore((state) => state.token);
   const [searchTerm, setSearchTerm] = useState('');
 
-  const { data: articles, isLoading } = useQuery({
-    queryKey: ['knowledge'],
-    queryFn: async () => {
-      const res = await fetch('/api/knowledge', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      return res.json();
-    },
-  });
+  const articles = useLiveQuery(() => db.knowledge_base.toArray(), []);
+  const isLoading = articles === undefined;
 
   const filteredArticles = articles?.filter((a: any) => 
     a.title.toLowerCase().includes(searchTerm.toLowerCase()) ||

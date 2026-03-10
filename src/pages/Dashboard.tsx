@@ -1,14 +1,12 @@
 import React from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { useAuthStore } from '../store/authStore';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '../db';
 import { 
   ClipboardList, 
   Clock, 
   CheckCircle2, 
   AlertCircle,
   TrendingUp,
-  ArrowUpRight,
-  ArrowDownRight
 } from 'lucide-react';
 import { 
   BarChart, 
@@ -22,7 +20,7 @@ import {
   Area
 } from 'recharts';
 
-const data = [
+const chartData = [
   { name: 'Seg', services: 4, revenue: 1200 },
   { name: 'Ter', services: 7, revenue: 2100 },
   { name: 'Qua', services: 5, revenue: 1500 },
@@ -33,17 +31,24 @@ const data = [
 ];
 
 export default function Dashboard() {
-  const token = useAuthStore((state) => state.token);
+  const stats = useLiveQuery(async () => {
+    const open = await db.service_orders.where('status').equals('pending_diagnosis').count();
+    const in_progress = await db.service_orders.where('status').equals('in_progress').count();
+    const waiting_approval = await db.service_orders.where('status').equals('waiting_approval').count();
+    const finished = await db.service_orders.where('status').equals('finished').count();
+    
+    const monthStr = new Date().toISOString().slice(0, 7);
+    const financialRecords = await db.financial
+      .where('type').equals('income')
+      .filter(f => f.date.startsWith(monthStr))
+      .toArray();
+    
+    const monthly_revenue = financialRecords.reduce((acc, curr) => acc + curr.amount, 0);
 
-  const { data: stats, isLoading } = useQuery({
-    queryKey: ['dashboard-stats'],
-    queryFn: async () => {
-      const res = await fetch('/api/dashboard/stats', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      return res.json();
-    },
-  });
+    return { open, in_progress, waiting_approval, finished, monthly_revenue };
+  }, []);
+
+  const isLoading = stats === undefined;
 
   const cards = [
     { label: 'OS Abertas', value: stats?.open || 0, icon: ClipboardList, color: 'text-blue-400', bg: 'bg-blue-400/10' },
@@ -90,13 +95,13 @@ export default function Dashboard() {
           </div>
           <div className="h-[250px] sm:h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={data}>
+              <BarChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
                 <XAxis dataKey="name" stroke="#ffffff40" fontSize={10} tickLine={false} axisLine={false} />
                 <YAxis stroke="#ffffff40" fontSize={10} tickLine={false} axisLine={false} />
                 <Tooltip 
-                  contentStyle={{ backgroundColor: '#1E1E1E', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', fontSize: '12px' }}
-                  itemStyle={{ color: '#fff' }}
+                   contentStyle={{ backgroundColor: '#1E1E1E', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', fontSize: '12px' }}
+                   itemStyle={{ color: '#fff' }}
                 />
                 <Bar dataKey="services" fill="#0A84FF" radius={[4, 4, 0, 0]} />
               </BarChart>
@@ -111,7 +116,7 @@ export default function Dashboard() {
           </div>
           <div className="h-[250px] sm:h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={data}>
+              <AreaChart data={chartData}>
                 <defs>
                   <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#2ECC71" stopOpacity={0.3}/>
@@ -122,8 +127,8 @@ export default function Dashboard() {
                 <XAxis dataKey="name" stroke="#ffffff40" fontSize={10} tickLine={false} axisLine={false} />
                 <YAxis stroke="#ffffff40" fontSize={10} tickLine={false} axisLine={false} />
                 <Tooltip 
-                  contentStyle={{ backgroundColor: '#1E1E1E', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', fontSize: '12px' }}
-                  itemStyle={{ color: '#fff' }}
+                   contentStyle={{ backgroundColor: '#1E1E1E', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', fontSize: '12px' }}
+                   itemStyle={{ color: '#fff' }}
                 />
                 <Area type="monotone" dataKey="revenue" stroke="#2ECC71" fillOpacity={1} fill="url(#colorRev)" strokeWidth={3} />
               </AreaChart>

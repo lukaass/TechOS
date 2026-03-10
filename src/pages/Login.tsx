@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { useAuthStore } from '../store/authStore';
-import { motion } from 'motion/react';
+import { motion } from 'framer-motion';
 import { LogIn, ShieldCheck } from 'lucide-react';
+import { db } from '../db';
+import * as bcrypt from 'bcryptjs';
 
 export default function Login() {
   const [email, setEmail] = useState('admin@techos.com');
-  const [password, setPassword] = useState('admin123');
+  const [password, setPassword] = useState('admin');
   const [error, setError] = useState('');
   const setAuth = useAuthStore((state) => state.setAuth);
 
@@ -13,19 +15,20 @@ export default function Login() {
     e.preventDefault();
     setError('');
     try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setAuth(data.token, data.user);
+      const user = await db.users.where('email').equals(email).first();
+      
+      if (user && user.password && bcrypt.compareSync(password, user.password)) {
+        // In a real local app, we don't need a token, but we'll use a dummy one to keep the store working
+        setAuth('local-session-token', { 
+          id: user.id!, 
+          name: user.name, 
+          role: user.role 
+        });
       } else {
-        setError(data.error || 'Erro ao entrar');
+        setError('E-mail ou senha inválidos');
       }
     } catch (err) {
-      setError('Erro de conexão');
+      setError('Erro ao acessar banco de dados local');
     }
   };
 

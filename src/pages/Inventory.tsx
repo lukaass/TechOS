@@ -1,21 +1,13 @@
 import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { useAuthStore } from '../store/authStore';
-import { Search, Plus, Package, AlertTriangle, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '../db';
+import { Search, Plus, Package, AlertTriangle } from 'lucide-react';
 
 export default function Inventory() {
-  const token = useAuthStore((state) => state.token);
   const [searchTerm, setSearchTerm] = useState('');
 
-  const { data: items, isLoading } = useQuery({
-    queryKey: ['inventory'],
-    queryFn: async () => {
-      const res = await fetch('/api/inventory', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      return res.json();
-    },
-  });
+  const items = useLiveQuery(() => db.inventory.toArray(), []);
+  const isLoading = items === undefined;
 
   const filteredItems = items?.filter((item: any) => 
     item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||

@@ -1,18 +1,23 @@
 import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { useAuthStore } from '../store/authStore';
-import { Calendar as CalendarIcon, Clock, Plus, ChevronLeft, ChevronRight, User } from 'lucide-react';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '../db';
+import { Clock, Plus, ChevronLeft, ChevronRight, User } from 'lucide-react';
 
 export default function Schedule() {
-  const token = useAuthStore((state) => state.token);
   const [currentDate, setCurrentDate] = useState(new Date());
 
-  const appointments = [
-    { id: 1, client: 'João Silva', time: '09:00', description: 'Retirada de Notebook', status: 'confirmed' },
-    { id: 2, client: 'Maria Oliveira', time: '11:30', description: 'Visita Técnica - Rede', status: 'pending' },
-    { id: 3, client: 'Empresa ABC', time: '14:00', description: 'Manutenção Preventiva', status: 'confirmed' },
-    { id: 4, client: 'Carlos Souza', time: '16:30', description: 'Entrega de PC Gamer', status: 'pending' },
-  ];
+  const appointments = useLiveQuery(async () => {
+    const dateStr = currentDate.toISOString().split('T')[0];
+    const data = await db.schedule.where('date').equals(dateStr).toArray();
+    
+    return Promise.all(data.map(async (app) => {
+      const client = await db.clients.get(app.client_id);
+      return {
+        ...app,
+        client_name: client?.name || 'Cliente não encontrado'
+      };
+    }));
+  }, [currentDate]);
 
   return (
     <div className="space-y-8">
@@ -62,7 +67,7 @@ export default function Schedule() {
 
         <div className="lg:col-span-2 space-y-4">
           <h3 className="text-xl font-bold mb-4">Compromissos de Hoje</h3>
-          {appointments.map((app) => (
+          {appointments?.map((app) => (
             <div key={app.id} className="bg-[#1E1E1E] p-6 rounded-3xl border border-white/5 flex items-center gap-6 hover:border-[#0A84FF]/30 transition-all group">
               <div className="w-16 h-16 bg-white/5 rounded-2xl flex flex-col items-center justify-center shrink-0 group-hover:bg-[#0A84FF]/10 transition-colors">
                 <span className="text-lg font-bold text-white group-hover:text-[#0A84FF]">{app.time}</span>
@@ -72,7 +77,7 @@ export default function Schedule() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
                   <User size={14} className="text-white/20" />
-                  <h4 className="font-bold truncate">{app.client}</h4>
+                  <h4 className="font-bold truncate">{app.client_name}</h4>
                 </div>
                 <p className="text-sm text-white/40 truncate">{app.description}</p>
               </div>
@@ -89,6 +94,11 @@ export default function Schedule() {
               </div>
             </div>
           ))}
+          {appointments?.length === 0 && (
+            <div className="text-center py-12 bg-[#1E1E1E] rounded-3xl border border-white/5">
+              <p className="text-white/40">Nenhum compromisso para este dia.</p>
+            </div>
+          )}
         </div>
       </div>
     </div>
