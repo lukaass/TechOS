@@ -10,6 +10,10 @@ import multer from 'multer';
 import QRCode from 'qrcode';
 import PDFDocument from 'pdfkit';
 import { createClient } from '@supabase/supabase-js';
+import cors from 'cors';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -17,13 +21,17 @@ const __dirname = path.dirname(__filename);
 const JWT_SECRET = process.env.JWT_SECRET || 'techos-super-secret-key';
 
 // --- Database Configuration ---
-const useSupabase = process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY;
-let supabase: any = null;
+// Forçando a leitura das variáveis que configuramos na Vercel
+const supabaseUrl = process.env.SUPABASE_URL || process.env.DATABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY;
+
+const useSupabase = !!(supabaseUrl && supabaseKey);
+export let supabase: any = null;
 let db: any = null;
 
 if (useSupabase) {
   console.log('Using Supabase as database');
-  supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+  supabase = createClient(supabaseUrl || '', supabaseKey || '');
 } else {
   console.log('Using SQLite as database (fallback)');
   db = new Database('techos.db');
@@ -187,9 +195,20 @@ if (useSupabase) {
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = parseInt(process.env.PORT || '3000', 10);
 
+  app.use(cors());
   app.use(express.json());
+
+  // Teste de conexão simples
+  app.get('/api/health', async (req, res) => {
+    if (!useSupabase) {
+      return res.json({ status: 'Online (SQLite Fallback)', data: { count: 'N/A' } });
+    }
+    const { data, error } = await supabase.from('users').select('count', { count: 'exact', head: true });
+    if (error) return res.status(500).json({ status: 'Erro no Banco', error });
+    res.json({ status: 'Online e Conectado ao Supabase', data });
+  });
 
   // Ensure uploads directory exists
   const uploadsDir = path.join(__dirname, 'uploads');
