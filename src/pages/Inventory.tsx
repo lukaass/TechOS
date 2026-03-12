@@ -2,11 +2,12 @@ import React, { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, Plus, Package, AlertTriangle, X } from 'lucide-react';
+import { Search, Plus, Package, AlertTriangle, X, Trash2 } from 'lucide-react';
 
 export default function Inventory() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<number | null>(null);
   const [newItem, setNewItem] = useState({
     name: '',
     category: '',
@@ -30,6 +31,17 @@ export default function Inventory() {
       setNewItem({ name: '', category: '', quantity: 0, cost_price: 0, sale_price: 0, min_quantity: 5 });
     } catch (err) {
       console.error('Erro ao adicionar item:', err);
+    }
+  };
+
+  const handleDeleteItem = async () => {
+    if (itemToDelete !== null) {
+      try {
+        await db.inventory.delete(itemToDelete);
+        setItemToDelete(null);
+      } catch (err) {
+        console.error('Erro ao deletar item:', err);
+      }
     }
   };
 
@@ -72,11 +84,20 @@ export default function Inventory() {
               <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white/5 rounded-xl sm:rounded-2xl flex items-center justify-center text-white/40">
                 <Package size={20} className="sm:w-6 sm:h-6" />
               </div>
-              {item.quantity <= item.min_quantity && (
-                <div className="text-red-400 bg-red-400/10 p-1.5 sm:p-2 rounded-lg" title="Estoque Baixo">
-                  <AlertTriangle size={14} className="sm:w-4 sm:h-4" />
-                </div>
-              )}
+              <div className="flex items-center gap-2">
+                {item.quantity <= item.min_quantity && (
+                  <div className="text-red-400 bg-red-400/10 p-1.5 sm:p-2 rounded-lg" title="Estoque Baixo">
+                    <AlertTriangle size={14} className="sm:w-4 sm:h-4" />
+                  </div>
+                )}
+                <button 
+                  onClick={() => setItemToDelete(item.id)}
+                  className="text-white/20 hover:text-red-400 p-1.5 sm:p-2 rounded-lg hover:bg-red-400/10 transition-colors"
+                  title="Excluir Item"
+                >
+                  <Trash2 size={16} className="sm:w-5 sm:h-5" />
+                </button>
+              </div>
             </div>
             
             <h3 className="text-base sm:text-lg font-bold mb-1">{item.name}</h3>
@@ -97,6 +118,49 @@ export default function Inventory() {
           </div>
         ))}
       </div>
+
+      {/* Modal Confirmação de Exclusão */}
+      <AnimatePresence>
+        {itemToDelete !== null && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setItemToDelete(null)}
+              className="absolute inset-0 bg-black/80 backdrop-blur-md"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-md bg-[#1E1E1E] rounded-3xl p-8 border border-white/10 shadow-2xl text-center"
+            >
+              <div className="w-16 h-16 bg-red-400/10 text-red-400 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                <Trash2 size={32} />
+              </div>
+              <h3 className="text-2xl font-bold mb-2">Excluir Item?</h3>
+              <p className="text-white/40 mb-8">
+                Tem certeza que deseja remover este item do estoque? Esta ação não pode ser desfeita.
+              </p>
+              <div className="flex gap-4">
+                <button
+                  onClick={() => setItemToDelete(null)}
+                  className="flex-1 py-4 bg-white/5 hover:bg-white/10 rounded-xl font-bold transition-all"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleDeleteItem}
+                  className="flex-1 py-4 bg-red-500 hover:bg-red-600 rounded-xl font-bold transition-all"
+                >
+                  Excluir
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Modal Novo Item */}
       <AnimatePresence>
