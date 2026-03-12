@@ -1,12 +1,16 @@
 import React, { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
-import { Search, UserPlus, Phone, Mail, MapPin, History, ChevronRight } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { Search, UserPlus, Phone, Mail, MapPin, History, ChevronRight, Plus, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 
 export default function Clients() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [isEquipmentModalOpen, setIsEquipmentModalOpen] = useState(false);
+  const [selectedClient, setSelectedClient] = useState<any>(null);
   const [newClient, setNewClient] = useState({
     name: '',
     cpf_cnpj: '',
@@ -20,23 +24,55 @@ export default function Clients() {
     notes: ''
   });
 
+  const [newEquipment, setNewEquipment] = useState({
+    type: '',
+    brand: '',
+    model: '',
+    serial_number: '',
+    notes: ''
+  });
+
   const clients = useLiveQuery(() => db.clients.orderBy('name').toArray(), []);
-  const isLoading = clients === undefined;
+  const clientEquipment = useLiveQuery(
+    () => selectedClient ? db.equipment.where('client_id').equals(selectedClient.id).toArray() : Promise.resolve([]),
+    [selectedClient]
+  );
 
   const handleCreateClient = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await db.clients.add({
-        ...newClient,
-        created_at: new Date().toISOString()
-      });
+      if (isEditMode && selectedClient) {
+        await db.clients.update(selectedClient.id, newClient);
+      } else {
+        await db.clients.add({
+          ...newClient,
+          created_at: new Date().toISOString()
+        });
+      }
       setIsModalOpen(false);
+      setIsEditMode(false);
       setNewClient({
         name: '', cpf_cnpj: '', phone: '', whatsapp: '', email: '',
         address: '', city: '', state: '', zip: '', notes: ''
       });
     } catch (err) {
-      console.error('Erro ao criar cliente:', err);
+      console.error('Erro ao salvar cliente:', err);
+    }
+  };
+
+  const handleCreateEquipment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedClient) return;
+    try {
+      await db.equipment.add({
+        ...newEquipment,
+        client_id: selectedClient.id,
+        created_at: new Date().toISOString()
+      });
+      setIsEquipmentModalOpen(false);
+      setNewEquipment({ type: '', brand: '', model: '', serial_number: '', notes: '' });
+    } catch (err) {
+      console.error('Erro ao criar equipamento:', err);
     }
   };
 
@@ -106,13 +142,143 @@ export default function Clients() {
               </div>
             </div>
 
-            <button className="w-full mt-6 py-2.5 sm:py-3 bg-white/5 hover:bg-white/10 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all">
+            <button 
+              onClick={() => {
+                setSelectedClient(client);
+                setIsDetailsOpen(true);
+              }}
+              className="w-full mt-6 py-2.5 sm:py-3 bg-white/5 hover:bg-white/10 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all"
+            >
               Ver Detalhes
               <ChevronRight size={14} />
             </button>
           </motion.div>
         ))}
       </div>
+
+      {/* Modal Detalhes do Cliente */}
+      <AnimatePresence>
+        {isDetailsOpen && selectedClient && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsDetailsOpen(false)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-2xl bg-[#1E1E1E] rounded-2xl sm:rounded-3xl p-5 sm:p-8 border border-white/10 shadow-2xl overflow-y-auto max-h-[90vh]"
+            >
+              <div className="flex items-center justify-between mb-6 sm:mb-8">
+                <h3 className="text-xl sm:text-2xl font-bold">Detalhes do Cliente</h3>
+                <button onClick={() => setIsDetailsOpen(false)} className="text-white/40 hover:text-white">
+                  <X size={24} />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-xs font-bold text-white/20 uppercase tracking-wider mb-1">Nome</p>
+                    <p className="text-lg font-bold">{selectedClient.name}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-white/20 uppercase tracking-wider mb-1">CPF / CNPJ</p>
+                    <p className="text-white/80">{selectedClient.cpf_cnpj || 'Não informado'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-white/20 uppercase tracking-wider mb-1">Telefone</p>
+                    <p className="text-white/80">{selectedClient.phone || 'Não informado'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-white/20 uppercase tracking-wider mb-1">WhatsApp</p>
+                    <p className="text-white/80">{selectedClient.whatsapp || 'Não informado'}</p>
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-xs font-bold text-white/20 uppercase tracking-wider mb-1">E-mail</p>
+                    <p className="text-white/80">{selectedClient.email || 'Não informado'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-white/20 uppercase tracking-wider mb-1">Endereço</p>
+                    <p className="text-white/80">{selectedClient.address || 'Não informado'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-white/20 uppercase tracking-wider mb-1">Cidade / UF</p>
+                    <p className="text-white/80">{selectedClient.city ? `${selectedClient.city} - ${selectedClient.state}` : 'Não informado'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-white/20 uppercase tracking-wider mb-1">Observações</p>
+                    <p className="text-white/60 text-sm">{selectedClient.notes || 'Sem observações'}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-8 pt-8 border-t border-white/5">
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="font-bold">Equipamentos</h4>
+                  <button 
+                    onClick={() => setIsEquipmentModalOpen(true)}
+                    className="text-xs bg-[#0A84FF]/10 text-[#0A84FF] px-3 py-1.5 rounded-lg font-bold hover:bg-[#0A84FF]/20 transition-all flex items-center gap-1"
+                  >
+                    <Plus size={14} />
+                    Novo Equipamento
+                  </button>
+                </div>
+                <div className="space-y-2">
+                  {clientEquipment?.map((eq) => (
+                    <div key={eq.id} className="bg-white/2 p-3 rounded-xl border border-white/5 flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-bold">{eq.brand} {eq.model}</p>
+                        <p className="text-[10px] text-white/40 uppercase tracking-wider">{eq.type} • SN: {eq.serial_number || 'N/A'}</p>
+                      </div>
+                    </div>
+                  ))}
+                  {clientEquipment?.length === 0 && (
+                    <p className="text-xs text-white/20 text-center py-4 italic">Nenhum equipamento cadastrado.</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="mt-8 pt-8 border-t border-white/5 flex gap-4">
+                <button 
+                  onClick={() => {
+                    setNewClient({
+                      name: selectedClient.name,
+                      cpf_cnpj: selectedClient.cpf_cnpj || '',
+                      phone: selectedClient.phone || '',
+                      whatsapp: selectedClient.whatsapp || '',
+                      email: selectedClient.email || '',
+                      address: selectedClient.address || '',
+                      city: selectedClient.city || '',
+                      state: selectedClient.state || '',
+                      zip: selectedClient.zip || '',
+                      notes: selectedClient.notes || ''
+                    });
+                    setIsEditMode(true);
+                    setIsModalOpen(true);
+                    setIsDetailsOpen(false);
+                  }}
+                  className="flex-1 py-3 bg-[#0A84FF] hover:bg-[#0070E0] rounded-xl font-bold transition-all"
+                >
+                  Editar Cliente
+                </button>
+                <button 
+                  onClick={() => setIsDetailsOpen(false)}
+                  className="flex-1 py-3 bg-white/5 hover:bg-white/10 rounded-xl font-bold transition-all"
+                >
+                  Fechar
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Modal Novo Cliente */}
       <AnimatePresence>
@@ -132,8 +298,11 @@ export default function Clients() {
               className="relative w-full max-w-2xl bg-[#1E1E1E] rounded-2xl sm:rounded-3xl p-5 sm:p-8 border border-white/10 shadow-2xl overflow-y-auto max-h-[90vh]"
             >
               <div className="flex items-center justify-between mb-6 sm:mb-8">
-                <h3 className="text-xl sm:text-2xl font-bold">Novo Cliente</h3>
-                <button onClick={() => setIsModalOpen(false)} className="text-white/40 hover:text-white">
+                <h3 className="text-xl sm:text-2xl font-bold">{isEditMode ? 'Editar Cliente' : 'Novo Cliente'}</h3>
+                <button onClick={() => {
+                  setIsModalOpen(false);
+                  setIsEditMode(false);
+                }} className="text-white/40 hover:text-white">
                   <X size={24} />
                 </button>
               </div>
@@ -209,7 +378,97 @@ export default function Clients() {
                     type="submit"
                     className="flex-1 py-3 sm:py-4 bg-[#0A84FF] hover:bg-[#0070E0] rounded-xl font-bold transition-all text-sm sm:text-base"
                   >
-                    Salvar Cliente
+                    {isEditMode ? 'Salvar Alterações' : 'Salvar Cliente'}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal Novo Equipamento */}
+      <AnimatePresence>
+        {isEquipmentModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsEquipmentModalOpen(false)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-lg bg-[#1E1E1E] rounded-2xl sm:rounded-3xl p-5 sm:p-8 border border-white/10 shadow-2xl overflow-y-auto max-h-[90vh]"
+            >
+              <div className="flex items-center justify-between mb-6 sm:mb-8">
+                <h3 className="text-xl sm:text-2xl font-bold">Novo Equipamento</h3>
+                <button onClick={() => setIsEquipmentModalOpen(false)} className="text-white/40 hover:text-white">
+                  <X size={24} />
+                </button>
+              </div>
+
+              <form onSubmit={handleCreateEquipment} className="space-y-4 sm:space-y-6">
+                <div className="grid grid-cols-1 gap-4 sm:gap-6">
+                  <div className="space-y-1.5 sm:space-y-2">
+                    <label className="text-xs sm:text-sm font-medium text-white/40">Tipo (ex: Notebook, Celular)</label>
+                    <input
+                      type="text"
+                      required
+                      value={newEquipment.type}
+                      onChange={(e) => setNewEquipment({ ...newEquipment, type: e.target.value })}
+                      className="w-full bg-[#2A2A2A] border border-white/5 rounded-xl px-4 py-2.5 sm:py-3 text-sm sm:text-base text-white focus:outline-none focus:border-[#0A84FF]"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5 sm:space-y-2">
+                      <label className="text-xs sm:text-sm font-medium text-white/40">Marca</label>
+                      <input
+                        type="text"
+                        required
+                        value={newEquipment.brand}
+                        onChange={(e) => setNewEquipment({ ...newEquipment, brand: e.target.value })}
+                        className="w-full bg-[#2A2A2A] border border-white/5 rounded-xl px-4 py-2.5 sm:py-3 text-sm sm:text-base text-white focus:outline-none focus:border-[#0A84FF]"
+                      />
+                    </div>
+                    <div className="space-y-1.5 sm:space-y-2">
+                      <label className="text-xs sm:text-sm font-medium text-white/40">Modelo</label>
+                      <input
+                        type="text"
+                        required
+                        value={newEquipment.model}
+                        onChange={(e) => setNewEquipment({ ...newEquipment, model: e.target.value })}
+                        className="w-full bg-[#2A2A2A] border border-white/5 rounded-xl px-4 py-2.5 sm:py-3 text-sm sm:text-base text-white focus:outline-none focus:border-[#0A84FF]"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-1.5 sm:space-y-2">
+                    <label className="text-xs sm:text-sm font-medium text-white/40">Número de Série</label>
+                    <input
+                      type="text"
+                      value={newEquipment.serial_number}
+                      onChange={(e) => setNewEquipment({ ...newEquipment, serial_number: e.target.value })}
+                      className="w-full bg-[#2A2A2A] border border-white/5 rounded-xl px-4 py-2.5 sm:py-3 text-sm sm:text-base text-white focus:outline-none focus:border-[#0A84FF]"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-3 sm:gap-4 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setIsEquipmentModalOpen(false)}
+                    className="flex-1 py-3 sm:py-4 bg-white/5 hover:bg-white/10 rounded-xl font-bold transition-all text-sm sm:text-base"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 py-3 sm:py-4 bg-[#0A84FF] hover:bg-[#0070E0] rounded-xl font-bold transition-all text-sm sm:text-base"
+                  >
+                    Salvar Equipamento
                   </button>
                 </div>
               </form>
@@ -218,24 +477,5 @@ export default function Clients() {
         )}
       </AnimatePresence>
     </div>
-  );
-}
-
-function X({ size, className }: { size: number; className?: string }) {
-  return (
-    <svg 
-      xmlns="http://www.w3.org/2000/svg" 
-      width={size} 
-      height={size} 
-      viewBox="0 0 24 24" 
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="2" 
-      strokeLinecap="round" 
-      strokeLinejoin="round" 
-      className={className}
-    >
-      <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
-    </svg>
   );
 }

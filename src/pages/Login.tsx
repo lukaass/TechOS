@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { useAuthStore } from '../store/authStore';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 import { LogIn, ShieldCheck } from 'lucide-react';
 import { db } from '../db';
-import * as bcrypt from 'bcryptjs';
+import bcrypt from 'bcryptjs';
 
 export default function Login() {
   const [email, setEmail] = useState('admin@techos.com');
@@ -22,7 +22,8 @@ export default function Login() {
         setAuth('local-session-token', { 
           id: user.id!, 
           name: user.name, 
-          role: user.role 
+          role: user.role,
+          email: user.email
         });
       } else {
         setError('E-mail ou senha inválidos');

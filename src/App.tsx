@@ -1,5 +1,4 @@
 import React from 'react';
-
 import { Routes, Route, Navigate, Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from './store/authStore';
 import { 
@@ -18,9 +17,10 @@ import {
   ChevronRight,
   Clock,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  User as UserIcon
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 
 // --- Pages ---
 import Login from './pages/Login';
@@ -32,6 +32,7 @@ import KnowledgeBase from './pages/KnowledgeBase';
 import OSDetail from './pages/OSDetail';
 import Financial from './pages/Financial';
 import Schedule from './pages/Schedule';
+import Settings from './pages/Settings';
 
 function Sidebar({ isOpen, setIsOpen }: { isOpen: boolean; setIsOpen: (v: boolean) => void }) {
   const logout = useAuthStore((state) => state.logout);
@@ -45,6 +46,7 @@ function Sidebar({ isOpen, setIsOpen }: { isOpen: boolean; setIsOpen: (v: boolea
     { icon: BookOpen, label: 'Base de Conhecimento', path: '/knowledge' },
     { icon: Calendar, label: 'Agenda', path: '/schedule' },
     { icon: DollarSign, label: 'Financeiro', path: '/financial' },
+    { icon: UserIcon, label: 'Configurações', path: '/settings' },
   ];
 
   return (
@@ -112,20 +114,22 @@ function Layout({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen bg-[#141414] text-white flex">
       <Sidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
       
-      <main className="flex-1 lg:ml-[280px]">
+      <main className="flex-1 lg:ml-[280px] min-w-0">
         <header className="h-16 border-b border-white/5 flex items-center justify-between px-4 sm:px-6 sticky top-0 bg-[#141414]/80 backdrop-blur-md z-30">
-          <button onClick={() => setIsSidebarOpen(true)} className="lg:hidden text-white/60">
+          <button onClick={() => setIsSidebarOpen(true)} className="lg:hidden text-white/60 p-2 -ml-2">
             <Menu size={24} />
           </button>
           
           <div className="flex items-center gap-4 ml-auto">
-            <div className="text-right hidden sm:block">
-              <p className="text-sm font-medium">{user?.name}</p>
-              <p className="text-xs text-white/40 capitalize">{user?.role}</p>
-            </div>
-            <div className="w-10 h-10 rounded-full bg-[#0A84FF] flex items-center justify-center font-bold">
-              {user?.name?.[0]}
-            </div>
+            <Link to="/settings" className="flex items-center gap-4 hover:bg-white/5 p-2 rounded-2xl transition-colors">
+              <div className="text-right hidden sm:block">
+                <p className="text-sm font-medium">{user?.name}</p>
+                <p className="text-xs text-white/40 capitalize">{user?.role}</p>
+              </div>
+              <div className="w-10 h-10 rounded-full bg-[#0A84FF] flex items-center justify-center font-bold">
+                {user?.name?.[0]}
+              </div>
+            </Link>
           </div>
         </header>
 
@@ -157,6 +161,7 @@ export default function App() {
                 <Route path="/knowledge" element={<KnowledgeBase />} />
                 <Route path="/financial" element={<Financial />} />
                 <Route path="/schedule" element={<Schedule />} />
+                <Route path="/settings" element={<Settings />} />
                 <Route path="*" element={<Navigate to="/" />} />
               </Routes>
             </Layout>

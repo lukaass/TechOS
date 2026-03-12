@@ -94,14 +94,14 @@ export default function Dashboard() {
             <span className="text-[10px] sm:text-xs bg-white/5 px-3 py-1 rounded-full text-white/40">Últimos 7 dias</span>
           </div>
           <div className="h-[250px] sm:h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
               <BarChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
                 <XAxis dataKey="name" stroke="#ffffff40" fontSize={10} tickLine={false} axisLine={false} />
                 <YAxis stroke="#ffffff40" fontSize={10} tickLine={false} axisLine={false} />
                 <Tooltip 
-                   contentStyle={{ backgroundColor: '#1E1E1E', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', fontSize: '12px' }}
-                   itemStyle={{ color: '#fff' }}
+                  contentStyle={{ backgroundColor: '#1E1E1E', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', fontSize: '12px' }}
+                  itemStyle={{ color: '#fff' }}
                 />
                 <Bar dataKey="services" fill="#0A84FF" radius={[4, 4, 0, 0]} />
               </BarChart>
@@ -115,7 +115,7 @@ export default function Dashboard() {
             <span className="text-[10px] sm:text-xs bg-white/5 px-3 py-1 rounded-full text-white/40">Projeção Semanal</span>
           </div>
           <div className="h-[250px] sm:h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
               <AreaChart data={chartData}>
                 <defs>
                   <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
@@ -127,8 +127,8 @@ export default function Dashboard() {
                 <XAxis dataKey="name" stroke="#ffffff40" fontSize={10} tickLine={false} axisLine={false} />
                 <YAxis stroke="#ffffff40" fontSize={10} tickLine={false} axisLine={false} />
                 <Tooltip 
-                   contentStyle={{ backgroundColor: '#1E1E1E', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', fontSize: '12px' }}
-                   itemStyle={{ color: '#fff' }}
+                  contentStyle={{ backgroundColor: '#1E1E1E', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', fontSize: '12px' }}
+                  itemStyle={{ color: '#fff' }}
                 />
                 <Area type="monotone" dataKey="revenue" stroke="#2ECC71" fillOpacity={1} fill="url(#colorRev)" strokeWidth={3} />
               </AreaChart>
