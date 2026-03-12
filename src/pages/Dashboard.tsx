@@ -7,6 +7,7 @@ import {
   CheckCircle2, 
   AlertCircle,
   TrendingUp,
+  XCircle,
 } from 'lucide-react';
 import { 
   BarChart, 
@@ -36,6 +37,7 @@ export default function Dashboard() {
     const in_progress = await db.service_orders.where('status').equals('in_progress').count();
     const waiting_approval = await db.service_orders.where('status').equals('waiting_approval').count();
     const finished = await db.service_orders.where('status').equals('finished').count();
+    const rejected = await db.service_orders.where('status').equals('rejected').count();
     
     const monthStr = new Date().toISOString().slice(0, 7);
     const financialRecords = await db.financial
@@ -45,7 +47,7 @@ export default function Dashboard() {
     
     const monthly_revenue = financialRecords.reduce((acc, curr) => acc + curr.amount, 0);
 
-    return { open, in_progress, waiting_approval, finished, monthly_revenue };
+    return { open, in_progress, waiting_approval, finished, rejected, monthly_revenue };
   }, []);
 
   const isLoading = stats === undefined;
@@ -55,6 +57,7 @@ export default function Dashboard() {
     { label: 'Em Andamento', value: stats?.in_progress || 0, icon: Clock, color: 'text-yellow-400', bg: 'bg-yellow-400/10' },
     { label: 'Aguardando Aprovação', value: stats?.waiting_approval || 0, icon: AlertCircle, color: 'text-orange-400', bg: 'bg-orange-400/10' },
     { label: 'Finalizadas', value: stats?.finished || 0, icon: CheckCircle2, color: 'text-green-400', bg: 'bg-green-400/10' },
+    { label: 'Reprovadas', value: stats?.rejected || 0, icon: XCircle, color: 'text-red-400', bg: 'bg-red-400/10' },
   ];
 
   return (

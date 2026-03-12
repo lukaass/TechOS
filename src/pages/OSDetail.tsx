@@ -15,7 +15,8 @@ import {
   Wrench,
   Share2,
   Printer,
-  Save
+  Save,
+  X
 } from 'lucide-react';
 import SignaturePad from 'signature_pad';
 
@@ -25,6 +26,7 @@ const statusMap: Record<string, { label: string; color: string; bg: string; icon
   waiting_approval: { label: 'Aguardando Orçamento', color: 'text-orange-400', bg: 'bg-orange-400/10', icon: AlertCircle },
   paused: { label: 'Pausado', color: 'text-white/40', bg: 'bg-white/5', icon: PauseCircle },
   finished: { label: 'Finalizado', color: 'text-green-400', bg: 'bg-green-400/10', icon: CheckCircle2 },
+  rejected: { label: 'Reprovado', color: 'text-red-400', bg: 'bg-red-400/10', icon: X },
 };
 
 export default function OSDetail() {
@@ -32,6 +34,8 @@ export default function OSDetail() {
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
   const [isSignatureModalOpen, setIsSignatureModalOpen] = useState(false);
+  const [diagnostic, setDiagnostic] = useState('');
+  const [newLog, setNewLog] = useState('');
   const signatureRef = useRef<HTMLCanvasElement>(null);
   const signaturePadRef = useRef<SignaturePad | null>(null);
 
@@ -39,6 +43,8 @@ export default function OSDetail() {
     const osId = parseInt(id!);
     const data = await db.service_orders.get(osId);
     if (!data) return null;
+
+    if (diagnostic === '') setDiagnostic(data.diagnostic || '');
 
     const client = await db.clients.get(data.client_id);
     const equipment = await db.equipment.get(data.equipment_id);
@@ -69,6 +75,24 @@ export default function OSDetail() {
       description,
       created_at: new Date().toISOString()
     });
+  };
+
+  const handleAddLog = async () => {
+    if (!newLog.trim()) return;
+    const osId = parseInt(id!);
+    await db.os_logs.add({
+      os_id: osId,
+      technician_id: user?.id || 0,
+      description: newLog,
+      created_at: new Date().toISOString()
+    });
+    setNewLog('');
+  };
+
+  const handleSaveOS = async () => {
+    const osId = parseInt(id!);
+    await db.service_orders.update(osId, { diagnostic });
+    alert('Alterações salvas com sucesso!');
   };
 
   const handlePrint = () => {
@@ -114,7 +138,10 @@ export default function OSDetail() {
           <button className="p-2.5 sm:p-3 bg-white/5 hover:bg-white/10 rounded-xl transition-all text-white/60 hover:text-white shrink-0">
             <Share2 size={20} />
           </button>
-          <button className="p-2.5 sm:p-3 bg-[#0A84FF] hover:bg-[#0070E0] rounded-xl transition-all text-white font-bold px-4 sm:px-6 flex items-center gap-2 shrink-0">
+          <button 
+            onClick={handleSaveOS}
+            className="p-2.5 sm:p-3 bg-[#0A84FF] hover:bg-[#0070E0] rounded-xl transition-all text-white font-bold px-4 sm:px-6 flex items-center gap-2 shrink-0"
+          >
             <Save size={20} />
             <span className="hidden xs:inline">Salvar</span>
           </button>
@@ -170,14 +197,36 @@ export default function OSDetail() {
               <textarea
                 className="w-full bg-white/2 border border-white/5 rounded-xl sm:rounded-2xl p-4 sm:p-6 text-sm sm:text-base text-white/80 focus:outline-none focus:border-[#0A84FF] transition-colors min-h-[120px] sm:min-h-[150px]"
                 placeholder="Descreva o diagnóstico técnico aqui..."
-                defaultValue={os.diagnostic}
+                value={diagnostic}
+                onChange={(e) => setDiagnostic(e.target.value)}
               />
             </div>
           </div>
 
           {/* Timeline / Logs */}
           <div className="bg-[#1E1E1E] p-4 sm:p-8 rounded-2xl sm:rounded-3xl border border-white/5">
-            <h3 className="text-lg sm:text-xl font-bold mb-6 sm:mb-8">Evolução do Serviço</h3>
+            <div className="flex items-center justify-between mb-6 sm:mb-8">
+              <h3 className="text-lg sm:text-xl font-bold">Evolução do Serviço</h3>
+            </div>
+
+            {/* New Log Input */}
+            <div className="mb-8 flex flex-col sm:flex-row gap-3">
+              <input
+                type="text"
+                placeholder="Adicionar atualização ao serviço..."
+                value={newLog}
+                onChange={(e) => setNewLog(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleAddLog()}
+                className="flex-1 bg-white/5 border border-white/5 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#0A84FF]"
+              />
+              <button
+                onClick={handleAddLog}
+                className="bg-[#0A84FF] hover:bg-[#0070E0] text-white px-6 py-3 rounded-xl font-bold text-sm transition-all shrink-0"
+              >
+                Adicionar
+              </button>
+            </div>
+
             <div className="space-y-6 sm:space-y-8 relative before:absolute before:left-3 sm:before:left-4 before:top-2 before:bottom-2 before:w-px before:bg-white/5">
               {os.logs?.map((log: any) => (
                 <div key={log.id} className="relative pl-10 sm:pl-12">
@@ -200,30 +249,83 @@ export default function OSDetail() {
         <div className="space-y-4 sm:space-y-8">
           {/* Actions Card */}
           <div className="bg-[#1E1E1E] p-4 sm:p-8 rounded-2xl sm:rounded-3xl border border-white/5 space-y-4">
-            <h3 className="text-base sm:text-lg font-bold mb-2 sm:mb-4">Controle de Tempo</h3>
-            <div className="grid grid-cols-2 gap-3 sm:gap-4">
+            <h3 className="text-base sm:text-lg font-bold mb-2 sm:mb-4">Gestão da OS</h3>
+            
+            {os.status === 'pending_diagnosis' && (
               <button 
-                onClick={() => handleUpdateStatus('in_progress', 'Serviço iniciado')}
-                className="flex flex-col items-center justify-center p-3 sm:p-4 bg-green-400/10 text-green-400 rounded-xl sm:rounded-2xl hover:bg-green-400/20 transition-all gap-2"
+                onClick={() => handleUpdateStatus('waiting_approval', 'Diagnóstico concluído, aguardando aprovação do orçamento')}
+                className="w-full py-3 sm:py-4 bg-orange-500 text-white rounded-xl sm:rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-orange-600 transition-all text-sm sm:text-base"
               >
-                <Play size={20} className="sm:w-6 sm:h-6" />
-                <span className="text-[10px] font-bold uppercase">Iniciar</span>
+                <AlertCircle size={20} />
+                Enviar para Orçamento
               </button>
-              <button 
-                onClick={() => handleUpdateStatus('paused', 'Serviço pausado')}
-                className="flex flex-col items-center justify-center p-3 sm:p-4 bg-white/5 text-white/40 rounded-xl sm:rounded-2xl hover:bg-white/10 transition-all gap-2"
-              >
-                <PauseCircle size={20} className="sm:w-6 sm:h-6" />
-                <span className="text-[10px] font-bold uppercase">Pausar</span>
-              </button>
-            </div>
-            <button 
-              onClick={() => handleUpdateStatus('finished', 'Serviço finalizado')}
-              className="w-full py-3 sm:py-4 bg-[#0A84FF] text-white rounded-xl sm:rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-[#0070E0] transition-all text-sm sm:text-base"
-            >
-              <CheckCircle2 size={20} />
-              Finalizar OS
-            </button>
+            )}
+
+            {os.status === 'waiting_approval' && (
+              <div className="grid grid-cols-1 gap-3">
+                <button 
+                  onClick={() => handleUpdateStatus('in_progress', 'Orçamento aprovado pelo cliente')}
+                  className="w-full py-3 sm:py-4 bg-green-500 text-white rounded-xl sm:rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-green-600 transition-all text-sm sm:text-base"
+                >
+                  <CheckCircle2 size={20} />
+                  Aprovar Orçamento
+                </button>
+                <button 
+                  onClick={() => handleUpdateStatus('rejected', 'Orçamento reprovado pelo cliente')}
+                  className="w-full py-3 sm:py-4 bg-red-500/10 text-red-500 border border-red-500/20 rounded-xl sm:rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-red-500/20 transition-all text-sm sm:text-base"
+                >
+                  <X size={20} />
+                  Reprovar Orçamento
+                </button>
+              </div>
+            )}
+
+            {(os.status === 'in_progress' || os.status === 'paused') && (
+              <>
+                <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                  <button 
+                    onClick={() => handleUpdateStatus('in_progress', 'Serviço retomado')}
+                    disabled={os.status === 'in_progress'}
+                    className={`flex flex-col items-center justify-center p-3 sm:p-4 rounded-xl sm:rounded-2xl transition-all gap-2 ${
+                      os.status === 'in_progress' 
+                        ? 'bg-green-400/5 text-green-400/20 cursor-not-allowed' 
+                        : 'bg-green-400/10 text-green-400 hover:bg-green-400/20'
+                    }`}
+                  >
+                    <Play size={20} className="sm:w-6 sm:h-6" />
+                    <span className="text-[10px] font-bold uppercase">Iniciar</span>
+                  </button>
+                  <button 
+                    onClick={() => handleUpdateStatus('paused', 'Serviço pausado')}
+                    disabled={os.status === 'paused'}
+                    className={`flex flex-col items-center justify-center p-3 sm:p-4 rounded-xl sm:rounded-2xl transition-all gap-2 ${
+                      os.status === 'paused' 
+                        ? 'bg-white/2 text-white/10 cursor-not-allowed' 
+                        : 'bg-white/5 text-white/40 hover:bg-white/10'
+                    }`}
+                  >
+                    <PauseCircle size={20} className="sm:w-6 sm:h-6" />
+                    <span className="text-[10px] font-bold uppercase">Pausar</span>
+                  </button>
+                </div>
+                <button 
+                  onClick={() => handleUpdateStatus('finished', 'Serviço finalizado')}
+                  className="w-full py-3 sm:py-4 bg-[#0A84FF] text-white rounded-xl sm:rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-[#0070E0] transition-all text-sm sm:text-base"
+                >
+                  <CheckCircle2 size={20} />
+                  Finalizar OS
+                </button>
+              </>
+            )}
+
+            {(os.status === 'finished' || os.status === 'rejected') && (
+              <div className={`p-4 rounded-2xl border text-center ${
+                os.status === 'finished' ? 'bg-green-500/10 border-green-500/20 text-green-500' : 'bg-red-500/10 border-red-500/20 text-red-500'
+              }`}>
+                <p className="font-bold uppercase text-xs tracking-widest mb-1">Status Final</p>
+                <p className="text-lg font-bold">{status.label}</p>
+              </div>
+            )}
           </div>
 
           {/* QR Code & Signature */}

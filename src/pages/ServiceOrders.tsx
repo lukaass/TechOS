@@ -21,6 +21,7 @@ const statusMap: Record<string, { label: string; color: string; bg: string; icon
   waiting_approval: { label: 'Aguardando Orçamento', color: 'text-orange-400', bg: 'bg-orange-400/10', icon: AlertCircle },
   paused: { label: 'Pausado', color: 'text-white/40', bg: 'bg-white/5', icon: PauseCircle },
   finished: { label: 'Finalizado', color: 'text-green-400', bg: 'bg-green-400/10', icon: CheckCircle2 },
+  rejected: { label: 'Reprovado', color: 'text-red-400', bg: 'bg-red-400/10', icon: X },
 };
 
 export default function ServiceOrders() {
