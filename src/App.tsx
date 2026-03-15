@@ -18,7 +18,8 @@ import {
   Clock,
   CheckCircle2,
   AlertCircle,
-  User as UserIcon
+  User as UserIcon,
+  Cpu
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -33,6 +34,7 @@ import OSDetail from './pages/OSDetail';
 import Financial from './pages/Financial';
 import Schedule from './pages/Schedule';
 import Settings from './pages/Settings';
+import PCAssembly from './pages/PCAssembly';
 
 function Sidebar({ isOpen, setIsOpen }: { isOpen: boolean; setIsOpen: (v: boolean) => void }) {
   const logout = useAuthStore((state) => state.logout);
@@ -41,6 +43,7 @@ function Sidebar({ isOpen, setIsOpen }: { isOpen: boolean; setIsOpen: (v: boolea
   const menuItems = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
     { icon: ClipboardList, label: 'Ordens de Serviço', path: '/os' },
+    { icon: Cpu, label: 'Montagem de PC', path: '/pc-assembly' },
     { icon: Users, label: 'Clientes', path: '/clients' },
     { icon: Package, label: 'Estoque', path: '/inventory' },
     { icon: BookOpen, label: 'Base de Conhecimento', path: '/knowledge' },
@@ -157,6 +160,7 @@ export default function App() {
                 <Route path="/clients" element={<Clients />} />
                 <Route path="/os" element={<ServiceOrders />} />
                 <Route path="/os/:id" element={<OSDetail />} />
+                <Route path="/pc-assembly" element={<PCAssembly />} />
                 <Route path="/inventory" element={<Inventory />} />
                 <Route path="/knowledge" element={<KnowledgeBase />} />
                 <Route path="/financial" element={<Financial />} />

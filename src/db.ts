@@ -42,11 +42,12 @@ export interface Equipment {
 export interface ServiceOrder {
   id?: number;
   client_id: number;
-  equipment_id: number;
+  equipment_id?: number;
   technician_id?: number;
   problem_description: string;
   diagnostic?: string;
   status: string;
+  type: 'repair' | 'assembly';
   start_time?: string;
   end_time?: string;
   total_worked_time: number;
@@ -136,11 +137,11 @@ export class TechOSDatabase extends Dexie {
 
   constructor() {
     super('TechOSDatabase');
-    this.version(2).stores({
+    this.version(3).stores({
       users: '++id, email, role, created_at',
       clients: '++id, name, email, created_at',
       equipment: '++id, client_id, model, created_at',
-      service_orders: '++id, client_id, technician_id, status, created_at',
+      service_orders: '++id, client_id, technician_id, status, type, created_at',
       os_logs: '++id, os_id, technician_id, created_at',
       inventory: '++id, name, category, created_at',
       os_parts: '++id, os_id, part_id',
@@ -199,6 +200,7 @@ db.on('populate', async () => {
       equipment_id: equipmentId as number,
       problem_description: 'Notebook não liga',
       status: 'pending_diagnosis',
+      type: 'repair',
       total_worked_time: 0,
       created_at: new Date().toISOString(),
       qr_code: 'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=OS-1'

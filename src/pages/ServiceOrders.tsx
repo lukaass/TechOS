@@ -68,6 +68,7 @@ export default function ServiceOrders() {
         equipment_id: Number(newOS.equipment_id),
         problem_description: newOS.problem_description,
         status: newOS.status,
+        type: 'repair',
         total_worked_time: 0,
         created_at: new Date().toISOString()
       });
@@ -147,7 +148,9 @@ export default function ServiceOrders() {
                   </span>
                 </div>
                 <h3 className="font-bold text-lg mb-1">{os.client_name}</h3>
-                <p className="text-sm text-white/60 mb-3">{os.equipment_model}</p>
+                <p className="text-sm text-white/60 mb-3">
+                  {os.type === 'assembly' ? 'Montagem de PC' : os.equipment_model}
+                </p>
                 <div className="flex items-center justify-between text-xs text-white/40">
                   <div className="flex items-center gap-2">
                     <div className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center text-[8px] font-bold">
@@ -186,8 +189,12 @@ export default function ServiceOrders() {
                       <p className="text-xs text-white/40">Entrada: {new Date(os.created_at).toLocaleDateString()}</p>
                     </td>
                     <td className="px-6 py-4">
-                      <p className="font-medium">{os.equipment_model}</p>
-                      <p className="text-xs text-white/40">Problema: {os.problem_description.slice(0, 30)}...</p>
+                      <p className="font-medium">
+                        {os.type === 'assembly' ? 'Montagem de PC' : os.equipment_model}
+                      </p>
+                      <p className="text-xs text-white/40">
+                        {os.type === 'assembly' ? 'Projeto de Montagem' : `Problema: ${os.problem_description.slice(0, 30)}...`}
+                      </p>
                     </td>
                     <td className="px-6 py-4">
                       <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${status.bg} ${status.color}`}>

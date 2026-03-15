@@ -8,6 +8,7 @@ import {
   AlertCircle,
   TrendingUp,
   XCircle,
+  Cpu
 } from 'lucide-react';
 import { 
   BarChart, 
@@ -38,6 +39,7 @@ export default function Dashboard() {
     const waiting_approval = await db.service_orders.where('status').equals('waiting_approval').count();
     const finished = await db.service_orders.where('status').equals('finished').count();
     const rejected = await db.service_orders.where('status').equals('rejected').count();
+    const assemblies = await db.service_orders.where('type').equals('assembly').count();
     
     const monthStr = new Date().toISOString().slice(0, 7);
     const financialRecords = await db.financial
@@ -47,7 +49,7 @@ export default function Dashboard() {
     
     const monthly_revenue = financialRecords.reduce((acc, curr) => acc + curr.amount, 0);
 
-    return { open, in_progress, waiting_approval, finished, rejected, monthly_revenue };
+    return { open, in_progress, waiting_approval, finished, rejected, assemblies, monthly_revenue };
   }, []);
 
   const isLoading = stats === undefined;
@@ -58,6 +60,7 @@ export default function Dashboard() {
     { label: 'Aguardando Aprovação', value: stats?.waiting_approval || 0, icon: AlertCircle, color: 'text-orange-400', bg: 'bg-orange-400/10' },
     { label: 'Finalizadas', value: stats?.finished || 0, icon: CheckCircle2, color: 'text-green-400', bg: 'bg-green-400/10' },
     { label: 'Reprovadas', value: stats?.rejected || 0, icon: XCircle, color: 'text-red-400', bg: 'bg-red-400/10' },
+    { label: 'Montagens PC', value: stats?.assemblies || 0, icon: Cpu, color: 'text-purple-400', bg: 'bg-purple-400/10' },
   ];
 
   return (

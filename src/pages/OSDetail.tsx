@@ -47,7 +47,7 @@ export default function OSDetail() {
     if (diagnostic === '') setDiagnostic(data.diagnostic || '');
 
     const client = await db.clients.get(data.client_id);
-    const equipment = await db.equipment.get(data.equipment_id);
+    const equipment = data.equipment_id ? await db.equipment.get(data.equipment_id) : null;
     const logs = await db.os_logs.where('os_id').equals(osId).toArray();
     const parts = await db.os_parts.where('os_id').equals(osId).toArray();
     const services = await db.os_services.where('os_id').equals(osId).toArray();
@@ -170,9 +170,17 @@ export default function OSDetail() {
                 <p className="text-xs sm:text-sm text-white/60 mt-0.5 sm:mt-1">{os.client_phone}</p>
               </div>
               <div>
-                <p className="text-[10px] sm:text-xs text-white/40 uppercase font-bold mb-1 sm:mb-2">Equipamento</p>
-                <p className="text-lg sm:text-xl font-bold">{os.eq_brand} {os.eq_model}</p>
-                <p className="text-xs sm:text-sm text-white/60 mt-0.5 sm:mt-1">S/N: {os.eq_serial}</p>
+                <p className="text-[10px] sm:text-xs text-white/40 uppercase font-bold mb-1 sm:mb-2">
+                  {os.type === 'assembly' ? 'Tipo de Serviço' : 'Equipamento'}
+                </p>
+                {os.type === 'assembly' ? (
+                  <p className="text-lg sm:text-xl font-bold">Montagem de PC</p>
+                ) : (
+                  <>
+                    <p className="text-lg sm:text-xl font-bold">{os.eq_brand} {os.eq_model}</p>
+                    <p className="text-xs sm:text-sm text-white/60 mt-0.5 sm:mt-1">S/N: {os.eq_serial}</p>
+                  </>
+                )}
               </div>
             </div>
           </div>
